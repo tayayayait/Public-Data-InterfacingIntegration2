@@ -24,21 +24,50 @@ const NaverIcon = () => (
 );
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('dbcdkwo629@naver.com');
+  const [password, setPassword] = useState('12341234');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { user, signIn, signInWithKakao, signInWithNaver } = useAuth();
+  const { user, signIn, signInWithKakao, signInWithNaver, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Redirect if already logged in
   useEffect(() => {
-    // If auth state flips to signed-in while the signIn() promise is stuck,
-    // don't leave the user on the login page in a loading state.
-    if (!user) return;
-    setIsLoading(false);
-    navigate('/', { replace: true });
-  }, [user, navigate]);
+    if (user && !isAuthLoading) {
+      navigate('/', { replace: true });
+    }
+  }, [user, isAuthLoading, navigate]);
+
+  // Auto-login effect
+  useEffect(() => {
+    const autoLogin = async () => {
+      // Wait for initial auth check to complete
+      if (isAuthLoading) return;
+      
+      // If not logged in, attempt auto-login
+      if (!user) {
+        setIsLoading(true);
+        const { error } = await signIn('dbcdkwo629@naver.com', '12341234');
+        if (error) {
+          console.error("Auto login failed", error);
+          setIsLoading(false);
+          toast({
+            variant: 'destructive',
+            title: '자동 로그인 실패',
+            description: '다시 시도해 주세요.',
+          });
+        } else {
+             toast({
+                title: '자동 로그인 성공',
+                description: '체험 계정으로 접속했습니다.',
+              });
+        }
+      }
+    };
+    
+    autoLogin();
+  }, [isAuthLoading, user, signIn, toast]); // Dependency on isAuthLoading ensures it runs after initial check
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

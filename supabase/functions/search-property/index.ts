@@ -197,7 +197,8 @@ serve(async (req) => {
       
       // PNU가 있으면 국가중점데이터 API 사용 (가장 정확)
       if (pnu && pnu.length >= 8) {
-        const landUrl = `https://api.vworld.kr/ned/data/ladfrlList?key=${VWORLD_KEY}&pnu=${pnu}&format=json&numOfRows=1&domain=localhost`;
+const SERVICE_DOMAIN = "public-data-interfacing-integration-kappa.vercel.app";
+        const landUrl = `https://api.vworld.kr/ned/data/ladfrlList?key=${VWORLD_KEY}&pnu=${pnu}&format=json&numOfRows=1&domain=${SERVICE_DOMAIN}`;
         console.log(`[search-property][${requestId}] fetching land data via NED API with pnu=${pnu}`);
         const landRes = await timeoutFetch(landUrl, 10_000);
         if (landRes.ok) {
@@ -219,7 +220,8 @@ serve(async (req) => {
       
       // PNU가 없거나 결과가 없으면 기존 공간정보 API 시도 (fallback)
       if (land.jimok === null && land.landArea === null) {
-        const fallbackUrl = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_KEY}&domain=localhost&size=1`;
+        const SERVICE_DOMAIN = "public-data-interfacing-integration-kappa.vercel.app";
+        const fallbackUrl = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${VWORLD_KEY}&domain=${SERVICE_DOMAIN}&size=1`;
         console.log(`[search-property][${requestId}] fallback: spatial land API`);
         const landRes = await timeoutFetch(fallbackUrl, 10_000);
         if (landRes.ok) {

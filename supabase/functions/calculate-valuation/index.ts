@@ -66,7 +66,9 @@ function parseTradeXml(xml: string, targetArea?: number): TransactionInfo {
   const itemMatches = xml.match(/<item>[\s\S]*?<\/item>/g);
 
   if (!itemMatches) {
-    console.warn(`[parseTradeXml] No <item> tags found in XML. Raw XML preview (first 500 chars): ${xml.substring(0, 500)}`);
+    console.warn(
+      `[parseTradeXml] No <item> tags found in XML. Raw XML preview (first 500 chars): ${xml.substring(0, 500)}`,
+    );
     return { amount: null, date: null, floor: null, exclusSpace: null };
   }
 
@@ -196,9 +198,9 @@ serve(async (req) => {
     // 타임아웃 30초로 증가
     const tradeRes = await timeoutFetch(tradeUrl, 30_000);
     if (!tradeRes.ok) {
-        console.error(
-            `[calculate-valuation][${requestId}] Trade API ERROR: Status ${tradeRes.status} ${tradeRes.statusText} URL: ${tradeUrl.replace(GOV_DATA_KEY, "***")}`,
-        );
+      console.error(
+        `[calculate-valuation][${requestId}] Trade API ERROR: Status ${tradeRes.status} ${tradeRes.statusText} URL: ${tradeUrl.replace(GOV_DATA_KEY, "***")}`,
+      );
     }
 
     let transaction: TransactionInfo = {
@@ -211,11 +213,13 @@ serve(async (req) => {
       const tradeXml = await tradeRes.text();
       // targetArea를 넘겨서 가장 적합한 거래 찾기
       transaction = parseTradeXml(tradeXml, targetArea);
-      
+
       if (transaction.amount === null) {
-          console.warn(`[calculate-valuation][${requestId}] Trade API succeed but no valid transaction found after parsing.`);
+        console.warn(
+          `[calculate-valuation][${requestId}] Trade API succeed but no valid transaction found after parsing.`,
+        );
       }
-      
+
       console.log(
         `[calculate-valuation][${requestId}] best transaction found:`,
         transaction,
@@ -224,15 +228,16 @@ serve(async (req) => {
 
     let publicLandPrice: PublicLandPriceInfo = { pricePerM2: null, year: null };
     try {
-      
       // PNU가 있으면 국가중점데이터 API 사용 (가장 정확)
       if (pnu && pnu.length >= 8) {
         // 가이드에 따른 파라미터 구성: key, pnu, format, numOfRows, pageNo, domain(선택)
-        // 브이월드 오픈API는 Deno(서버)에서 호출 시 domain 파라미터가 없어도 되거나, 가짜 도메인을 넣어야 할 수 있음.
-        // 기존 코드에서 domain을 안 넣었을 때 잘 동작했는지 확인 필요하지만, 가이드 예시에는 domain이 있음.
-        // 일단 domain 제거하고 호출 (서버 사이드 호출이므로)
-        const vworldUrl = `https://api.vworld.kr/ned/data/getIndvdLandPriceAttr?key=${VWORLD_KEY}&pnu=${pnu}&format=json&numOfRows=1&pageNo=1&domain=localhost`;
-        
+        // 브이월드 오픈API는 인증키에 등록된 URL(도메인)과 호출 시 domain 파라미터가 일치해야 함.
+        // Vercel 배포 도메인으로 설정
+        const SERVICE_DOMAIN =
+          "public-data-interfacing-integration-kappa.vercel.app";
+        // 최근 100건 조회하여 최신 연도 데이터 사용 (기본 정렬이 과거순일 수 있음)
+        const vworldUrl = `https://api.vworld.kr/ned/data/getIndvdLandPriceAttr?key=${VWORLD_KEY}&pnu=${pnu}&format=json&numOfRows=100&pageNo=1&domain=${SERVICE_DOMAIN}`;
+
         console.log(
           `[calculate-valuation][${requestId}] fetching public price via NED API with pnu=${pnu}`,
         );
@@ -240,30 +245,40 @@ serve(async (req) => {
         if (vworldRes.ok) {
           const vworldJson = await vworldRes.json();
           // 국가중점데이터 API 응답 구조 확인
-          // 가이드 출력결과: items > item 형태일수도 있고, indvdLandPrices > field 형태일수도 있음.
-          // 실제 응답 확인을 위해 로그 강화 및 유연한 처리
-          
-          let item = null;
-          const root = vworldJson?.indvdLandPrices ?? vworldJson?.response?.body?.items; // items 케이스 대비
+
+          let items: any[] = [];
+          const root = vworldJson?.indvdLandPrices ?? vworldJson?.response?.body?.items;
 
           if (root) {
              if (Array.isArray(root.field)) {
-                 item = root.field[0];
+                 items = root.field;
              } else if (root.field) {
-                 item = root.field;
+                 items = [root.field];
              } else if (Array.isArray(root.item)) {
-                 item = root.item[0];
+                 items = root.item;
              } else if (root.item) {
-                 item = root.item;
+                 items = [root.item];
              }
           } else if (vworldJson?.indvdLandPrices) {
-             // field가 바로 있는 경우 (예: xml->json 변환 시)
-             item = vworldJson.indvdLandPrices;
+             // 다른 구조일 수 있으니 체크
+             if (Array.isArray(vworldJson.indvdLandPrices)) {
+                  items = vworldJson.indvdLandPrices;
+             } else {
+                  items = [vworldJson.indvdLandPrices];
+             }
           }
+          
+          if (items.length > 0) {
+            // 연도 기준 내림차순 정렬 (최신순)
+            items.sort((a, b) => {
+                const yearA = Number(a.stdrYear ?? 0);
+                const yearB = Number(b.stdrYear ?? 0);
+                return yearB - yearA;
+            });
 
-          if (item) {
-            const price = Number(item.pblntfPclnd ?? NaN);
-            const year = Number(item.stdrYear ?? NaN);
+            const bestItem = items[0];
+            const price = Number(bestItem.pblntfPclnd ?? NaN);
+            const year = Number(bestItem.stdrYear ?? NaN);
             
             // 0원인 경우도 데이터 없음으로 처리
             if (Number.isFinite(price) && price > 0) {
@@ -272,15 +287,16 @@ serve(async (req) => {
                   year: Number.isFinite(year) ? year : null,
                 };
                 console.log(
-                  `[calculate-valuation][${requestId}] NED API price found:`,
+                  `[calculate-valuation][${requestId}] NED API price found (latest of ${items.length}, year=${year}):`,
                   publicLandPrice,
                 );
             } else {
-                 console.log(`[calculate-valuation][${requestId}] NED API price is 0 or invalid:`, item);
+                 console.log(`[calculate-valuation][${requestId}] NED API annual price is 0 or invalid in latest item:`, bestItem);
             }
-
           } else {
-             console.log(`[calculate-valuation][${requestId}] NED API: 'item' extraction failed. Raw Structure Preview: ${JSON.stringify(vworldJson).substring(0, 300)}`);
+            console.log(
+               `[calculate-valuation][${requestId}] NED API: 'item' extraction failed. Raw Structure Preview: ${JSON.stringify(vworldJson).substring(0, 300)}`
+            );
           }
         } else {
           console.error(
@@ -322,7 +338,8 @@ serve(async (req) => {
         if (lat && lng) {
           // domain 파라미터 제외 (서버 간 통신이므로 referer 체크가 다를 수 있음, key 설정에 따름)
           // geomFilter 정확도 확인
-          const fallbackUrl = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_INDVDPBLNTF&key=${VWORLD_KEY}&size=1&geomFilter=POINT(${lng} ${lat})&domain=localhost`;
+          const SERVICE_DOMAIN = "public-data-interfacing-integration-kappa.vercel.app";
+          const fallbackUrl = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_INDVDPBLNTF&key=${VWORLD_KEY}&size=1&geomFilter=POINT(${lng} ${lat})&domain=${SERVICE_DOMAIN}`;
           console.log(
             `[calculate-valuation][${requestId}] fallback: spatial API with lat=${lat}, lng=${lng}`,
           );
@@ -345,11 +362,12 @@ serve(async (req) => {
               `[calculate-valuation][${requestId}] fallback price found:`,
               publicLandPrice,
             );
-            
-             if (!publicLandPrice.pricePerM2) {
-                  console.warn(`[calculate-valuation][${requestId}] Fallback API: Price extraction failed. Feature props: ${JSON.stringify(fallbackJson?.response?.result?.featureCollection?.features?.[0]?.properties)}`);
-             }
-             
+
+            if (!publicLandPrice.pricePerM2) {
+              console.warn(
+                `[calculate-valuation][${requestId}] Fallback API: Price extraction failed. Feature props: ${JSON.stringify(fallbackJson?.response?.result?.featureCollection?.features?.[0]?.properties)}`,
+              );
+            }
           } else {
             console.error(
               `[calculate-valuation][${requestId}] fallback API failed: ${fallbackRes.status}`,
@@ -445,7 +463,9 @@ serve(async (req) => {
 
     // 1000% 같은 비정상 수치 방어
     if (currentPercent && currentPercent > 500) {
-        console.warn(`[calculate-valuation][${requestId}] ABNORMAL RESULT: ${currentPercent}%. Check inputs and data sources.`);
+      console.warn(
+        `[calculate-valuation][${requestId}] ABNORMAL RESULT: ${currentPercent}%. Check inputs and data sources.`,
+      );
       cautions.push(
         "산출된 백분율이 비정상적으로 높습니다. 데이터 오류 가능성이 있습니다.",
       );
@@ -485,7 +505,10 @@ serve(async (req) => {
       requestId,
     );
   } catch (error: any) {
-    console.error(`[calculate-valuation][${requestId}] FATAL ERROR: ${error.message}`, error);
+    console.error(
+      `[calculate-valuation][${requestId}] FATAL ERROR: ${error.message}`,
+      error,
+    );
     return errorResponse(
       "internal_error",
       `가격 산출 중 오류: ${error.message}`,
