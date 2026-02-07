@@ -1,0 +1,205 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AI Report Service Design System */
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 221 83% 53%; /* primary_600 #2563EB */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 214 95% 93%;
+    --accent-foreground: 221 83% 53%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+
+    --radius: 1rem; /* 16px */
+
+    /* Custom tokens from spec */
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(221 83% 53%) 0%,
+      hsl(210 40% 98%) 100%
+    );
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
+    --shadow-hover:
+      0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-md */
+
+    /* Semantic Colors */
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --error: 0 72% 51%;
+    --info: 199 89% 48%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 32% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
+    --ring: 224 76% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family:
+      "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic",
+      sans-serif;
+    /* 50대 타겟: 기본 폰트 18px */
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  /* 50대 타겟: 폰트 스케일 */
+  h1 {
+    @apply font-bold tracking-tight;
+    font-size: 28px;
+    line-height: 1.25;
+  }
+  
+  h2 {
+    @apply font-bold tracking-tight;
+    font-size: 24px;
+  }
+  
+  h3 {
+    @apply font-semibold tracking-tight;
+    font-size: 20px;
+  }
+  
+  p, span, label, div {
+    min-height: auto; /* 기본값 유지 */
+  }
+
+  /* 입력 필드 최소 높이 48px */
+  input, select, textarea {
+    min-height: 48px;
+    font-size: 18px;
+  }
+
+  /* 버튼 최소 높이 48px, Primary는 56px */
+  button {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  /* 접근성: 포커스 링 강화 */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* 터치 타겟: 최소 44x44px */
+  a, button, [role="button"], input[type="checkbox"], input[type="radio"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Hide/neutralize host-injected badge (heart chip) */
+  #lovable-badge,
+  [id^="lovable-badge"],
+  [id*="lovable-badge"],
+  .lovable-badge,
+  [class*="lovable-badge"],
+  [data-lovable-badge],
+  [data-testid="lovable-badge"],
+  [data-testid*="lovable"],
+  a[href*="lovable.dev"],
+  a[href*="lovable.app"],
+  iframe[src*="lovable.dev"],
+  iframe[src*="lovable.app"],
+  div[id*="lovable"],
+  div[class*="lovable"],
+  button[id*="lovable"],
+  button[class*="lovable"],
+  span[id*="lovable"],
+  span[class*="lovable"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-hover {
+    box-shadow: var(--shadow-hover);
+  }
+
+  .glass {
+    @apply backdrop-blur-md bg-card/80;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background: var(--gradient-primary);
+  }
+}
