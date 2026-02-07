@@ -30,11 +30,14 @@ import AdminReportLogs from "./pages/admin/AdminReportLogs";
 import AdminLibrary from "./pages/admin/AdminLibrary";
 import AdminLogin from "./pages/admin/AdminLogin";
 
+import { GlobalAutoLogin } from "@/components/auth/GlobalAutoLogin";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <GlobalAutoLogin />
       <TooltipProvider>
         <Toaster />
         <Sonner />
